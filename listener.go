@@ -13,12 +13,12 @@ import (
 // Listener is a wrapper around a caddy.Listener that modifies SSTP requests
 type Listener struct {
 	caddy.Listener
-	capturedHandshake string
 }
 
 // WrappedConn is a wrapper around a net.Conn that modifies SSTP requests
 type WrappedConn struct {
 	net.Conn
+	capturedHandshake string
 }
 
 // Accept is a wrapper around caddy.Listener.Accept() that intercepts the SSTP HTTP handshake
