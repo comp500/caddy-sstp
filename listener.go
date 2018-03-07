@@ -32,8 +32,8 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 // Overrides net.Conn.Read to modify SSTP requests
-func (c WrappedConn) Read(b []byte) (n int, err error) {
-	n, err = c.Conn.Read(b)
+func (c WrappedConn) Read(b []byte) (int, error) {
+	n, err := c.Conn.Read(b)
 	fmt.Printf("Read %s bytes\n", hex.Dump(b))
 	return n, err
 }
