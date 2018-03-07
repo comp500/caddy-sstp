@@ -24,10 +24,15 @@ func setup(c *caddy.Controller) error {
 
 	cfg := httpserver.GetConfig(c)
 	mid := func(next httpserver.Handler) httpserver.Handler {
-		server.Next = next
+		server.NextHandler = next
 		return server
 	}
 	cfg.AddMiddleware(mid)
+	listenMid := func(next caddy.Listener) caddy.Listener {
+		listen := &Listener{Listener: next}
+		return listen
+	}
+	cfg.AddListenerMiddleware(listenMid)
 
 	return nil
 }
