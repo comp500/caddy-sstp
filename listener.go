@@ -49,9 +49,9 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 	}
 	fmt.Printf("Read %v bytes\n", n)
 
-	if c.currentOffset == 0 {
-		// Check the method
-		if !c.checkedMethod {
+	// Check the method
+	if !c.checkedMethod {
+		if c.currentOffset == 0 {
 			if len(b) >= 4 {
 				// If not SSTP, ignore further bytes and passthrough
 				if !bytes.Equal(b[:4], []byte("SSTP")) {
@@ -60,35 +60,48 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 				}
 				c.checkedMethod = true
 			}
-		}
-	} else {
-		c.handshakeBuffer.Write(b)
-		if c.handshakeBuffer.Len() < 4 {
-			// Return with current data, wait for more
-			c.currentOffset += c.handshakeBuffer.Len()
-			return n, nil
-		}
-		checkSlice := make([]byte, 4)
-		numChecked, err := c.handshakeBuffer.Read(checkSlice)
-		if err != nil {
-			return n, err
-		}
-		if numChecked != 4 {
-			// This shouldn't happen
-			return n, errors.New("Internal sstp WrappedConn error")
-		}
+		} else {
+			c.handshakeBuffer.Write(b)
+			if c.handshakeBuffer.Len() < 4 {
+				// Return with current data, wait for more
+				c.currentOffset += c.handshakeBuffer.Len()
+				return n, nil
+			}
+			checkSlice := make([]byte, 4)
+			numChecked, err := c.handshakeBuffer.Read(checkSlice)
+			if err != nil {
+				return n, err
+			}
+			if numChecked != 4 {
+				// This shouldn't happen
+				return n, errors.New("Internal sstp WrappedConn error")
+			}
 
-		// If not SSTP, ignore further bytes and passthrough
-		if !bytes.Equal(checkSlice, []byte("SSTP")) {
-			c.ignoreFurther = true
-			return n, nil
+			// If not SSTP, ignore further bytes and passthrough
+			if !bytes.Equal(checkSlice, []byte("SSTP")) {
+				c.ignoreFurther = true
+				return n, nil
+			}
+			c.checkedMethod = true
 		}
-		c.checkedMethod = true
 	}
 
 	fmt.Print("SSTP packet received!")
 
-	// wait for Content-Length
+	// TODO: fix for multiple Read() calls, if Content-Length is split across multiple
+	// Find Content-Length
+	index := bytes.Index(b, []byte("Content-Length: 18446744073709551615"))
+	if index > -1 {
+		// replace "Content-Length: 18446744073709551615"
+		// with    "Content-Length: 9223372036854775807 " (max uint64)
+		replaced := []byte("Content-Length: 9223372036854775807 ")
+		for i := 0; i < 36; i++ {
+			b[index+i] = replaced[i]
+		}
+		c.ignoreFurther = true
+	} else {
+		fmt.Print("Content-Length not found")
+	}
 
 	return n, err
 }
