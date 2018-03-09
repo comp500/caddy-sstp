@@ -9,9 +9,8 @@ import (
 
 // Server is a httpserver.Handler that handles SSTP requests
 type Server struct {
-	httpTransport http.Transport
-	NextHandler   httpserver.Handler
-	testArg       string
+	NextHandler httpserver.Handler
+	testArg     string
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
