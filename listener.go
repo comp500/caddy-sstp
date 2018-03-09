@@ -1,7 +1,8 @@
 package sstp
 
 import (
-	"encoding/hex"
+	"bytes"
+	"errors"
 	"fmt"
 	"net"
 
@@ -19,6 +20,10 @@ type Listener struct {
 type WrappedConn struct {
 	net.Conn
 	capturedHandshake string
+	ignoreFurther     bool
+	checkedMethod     bool
+	currentOffset     int
+	handshakeBuffer   bytes.Buffer
 }
 
 // Accept is a wrapper around caddy.Listener.Accept() that intercepts the SSTP HTTP handshake
@@ -32,8 +37,58 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 // Overrides net.Conn.Read to modify SSTP requests
+// TODO: use buffer pools
 func (c WrappedConn) Read(b []byte) (int, error) {
+	if c.ignoreFurther {
+		return c.Conn.Read(b)
+	}
+
 	n, err := c.Conn.Read(b)
-	fmt.Printf("Read %s bytes\n", hex.Dump(b))
+	if err != nil {
+		return n, err
+	}
+	fmt.Printf("Read %v bytes\n", n)
+
+	if c.currentOffset == 0 {
+		// Check the method
+		if !c.checkedMethod {
+			if len(b) >= 4 {
+				// If not SSTP, ignore further bytes and passthrough
+				if !bytes.Equal(b[:4], []byte("SSTP")) {
+					c.ignoreFurther = true
+					return n, nil
+				}
+				c.checkedMethod = true
+			}
+		}
+	} else {
+		c.handshakeBuffer.Write(b)
+		if c.handshakeBuffer.Len() < 4 {
+			// Return with current data, wait for more
+			c.currentOffset += c.handshakeBuffer.Len()
+			return n, nil
+		}
+		checkSlice := make([]byte, 4)
+		numChecked, err := c.handshakeBuffer.Read(checkSlice)
+		if err != nil {
+			return n, err
+		}
+		if numChecked != 4 {
+			// This shouldn't happen
+			return n, errors.New("Internal sstp WrappedConn error")
+		}
+
+		// If not SSTP, ignore further bytes and passthrough
+		if !bytes.Equal(checkSlice, []byte("SSTP")) {
+			c.ignoreFurther = true
+			return n, nil
+		}
+		c.checkedMethod = true
+	}
+
+	fmt.Print("SSTP packet received!")
+
+	// wait for Content-Length
+
 	return n, err
 }
