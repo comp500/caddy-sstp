@@ -34,6 +34,18 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return WrappedConn{Conn: c}, nil
 }
 
+// The string to find and replace within SSTP handshakes.
+const (
+	HandshakeLengthOriginal = "Content-Length: 18446744073709551615"
+	HandshakeLengthReplaced = "Content-Length: 9223372036854775807 "
+)
+
+// The string to verify from the start of the request, to check that it is a SSTP handshake.
+const (
+	SstpMethodString = "SSTP"
+	SstpMethodLen    = len(SstpMethodString)
+)
+
 // Overrides net.Conn.Read to modify SSTP requests.
 //
 // This is needed as SSTP handshakes use a Content-Length greater than an int64, so it must be modified to be compatible.
@@ -56,9 +68,9 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 	// Check the method
 	if !c.checkedMethod {
 		if c.currentOffset == 0 {
-			if len(b) >= 4 {
+			if len(b) >= SstpMethodLen {
 				// If not SSTP, ignore further bytes and passthrough
-				if !bytes.Equal(b[:4], []byte("SSTP")) {
+				if !bytes.Equal(b[:SstpMethodLen], []byte(SstpMethodString)) {
 					c.ignoreFurther = true
 					return n, nil
 				}
@@ -71,23 +83,23 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 			}
 		} else {
 			c.handshakeBuffer.Write(b)
-			if c.handshakeBuffer.Len() < 4 {
+			if c.handshakeBuffer.Len() < SstpMethodLen {
 				// Return with current data, wait for more
 				c.currentOffset += c.handshakeBuffer.Len()
 				return n, nil
 			}
-			checkSlice := make([]byte, 4)
+			checkSlice := make([]byte, SstpMethodLen)
 			numChecked, err := c.handshakeBuffer.Read(checkSlice)
 			if err != nil {
 				return n, err
 			}
-			if numChecked != 4 {
+			if numChecked != SstpMethodLen {
 				// This shouldn't happen
 				return n, errors.New("Internal sstp WrappedConn error")
 			}
 
 			// If not SSTP, ignore further bytes and passthrough
-			if !bytes.Equal(checkSlice, []byte("SSTP")) {
+			if !bytes.Equal(checkSlice, []byte(SstpMethodString)) {
 				c.ignoreFurther = true
 				return n, nil
 			}
@@ -99,11 +111,11 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 
 	// TODO: fix for multiple Read() calls, if Content-Length is split across multiple
 	// Find Content-Length
-	index := bytes.Index(b, []byte("Content-Length: 18446744073709551615"))
+	index := bytes.Index(b, []byte(HandshakeLengthOriginal))
 	if index > -1 {
 		// replace "Content-Length: 18446744073709551615"
-		// with    "Content-Length: 9223372036854775807 " (max uint64)
-		replaced := []byte("Content-Length: 9223372036854775807 ")
+		// with    "Content-Length: 9223372036854775807 " (max int64)
+		replaced := []byte(HandshakeLengthReplaced)
 		for i := 0; i < 36; i++ {
 			b[index+i] = replaced[i]
 		}
