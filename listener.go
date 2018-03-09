@@ -35,8 +35,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 // Overrides net.Conn.Read to modify SSTP requests.
+//
 // This is needed as SSTP handshakes use a Content-Length greater than an int64, so it must be modified to be compatible.
+//
 // This currently only works on HTTP requests, as we currently have no way intercept after SSL decryption.
+//
 // This function is passive: it will not read more bytes than c.Conn.Read reads, and will modify them if it is needed.
 func (c WrappedConn) Read(b []byte) (int, error) {
 	// TODO: use buffer pools
