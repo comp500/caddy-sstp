@@ -30,7 +30,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	return WrappedConn{Conn: c}, nil
+	return &WrappedConn{Conn: c}, nil
 }
 
 // The string to find and replace within SSTP handshakes.
@@ -52,7 +52,7 @@ const (
 // This currently only works on HTTP requests, as we currently have no way intercept after SSL decryption.
 //
 // This function is passive: it will not read more bytes than c.Conn.Read reads, and will modify them if it is needed.
-func (c WrappedConn) Read(b []byte) (int, error) {
+func (c *WrappedConn) Read(b []byte) (int, error) {
 	// TODO: use buffer pools
 	if c.ignoreFurther {
 		return c.Conn.Read(b)
