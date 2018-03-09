@@ -104,5 +104,5 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 		fmt.Print("Content-Length not found")
 	}
 
-	return n, err
+	return n, nil
 }
