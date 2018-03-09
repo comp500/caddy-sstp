@@ -17,11 +17,10 @@ type Listener struct {
 // WrappedConn is a wrapper around a net.Conn that modifies SSTP requests.
 type WrappedConn struct {
 	net.Conn
-	capturedHandshake string
-	ignoreFurther     bool
-	checkedMethod     bool
-	currentOffset     int
-	handshakeBuffer   bytes.Buffer
+	ignoreFurther   bool
+	checkedMethod   bool
+	currentOffset   int
+	handshakeBuffer bytes.Buffer
 }
 
 // Accept is a wrapper around caddy.Listener.Accept() that intercepts the SSTP HTTP handshake.

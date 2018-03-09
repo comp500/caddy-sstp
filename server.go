@@ -51,7 +51,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 
 		fmt.Printf("Written %v bytes http response", n)
 
-		return 200, nil
+		return 0, nil
 	}
 	fmt.Print("Got a request")
 	return s.NextHandler.ServeHTTP(w, r)
