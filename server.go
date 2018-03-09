@@ -1,8 +1,10 @@
 package sstp
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
@@ -13,9 +15,17 @@ type Server struct {
 	testArg     string
 }
 
+// MethodSstp is the SSTP handshake's HTTP method
+const MethodSstp = "SSTP_DUPLEX_POST"
+
 // Serves SSTP requests. See httpserver.Handler.
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
-	if r.Method == "SSTP_DUPLEX_POST" {
+	if r.Method == MethodSstp {
+		// TODO: check URI
+		if r.ProtoMajor != 1 { // We don't support HTTP2
+			return http.StatusHTTPVersionNotSupported, errors.New("Unsupported HTTP major version: " + strconv.Itoa(r.ProtoMajor))
+		}
+
 		fmt.Print("Got a sstp request")
 		return 200, nil
 	}

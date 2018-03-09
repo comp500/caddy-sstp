@@ -42,8 +42,8 @@ const (
 
 // The string to verify from the start of the request, to check that it is a SSTP handshake.
 const (
-	SstpMethodString = "SSTP"
-	SstpMethodLen    = len(SstpMethodString)
+	MethodCheckString = "SSTP"
+	MethodCheckLen    = len(MethodCheckString)
 )
 
 // Overrides net.Conn.Read to modify SSTP requests.
@@ -68,9 +68,9 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 	// Check the method
 	if !c.checkedMethod {
 		if c.currentOffset == 0 {
-			if len(b) >= SstpMethodLen {
+			if len(b) >= MethodCheckLen {
 				// If not SSTP, ignore further bytes and passthrough
-				if !bytes.Equal(b[:SstpMethodLen], []byte(SstpMethodString)) {
+				if !bytes.Equal(b[:MethodCheckLen], []byte(MethodCheckString)) {
 					c.ignoreFurther = true
 					return n, nil
 				}
@@ -83,23 +83,23 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 			}
 		} else {
 			c.handshakeBuffer.Write(b)
-			if c.handshakeBuffer.Len() < SstpMethodLen {
+			if c.handshakeBuffer.Len() < MethodCheckLen {
 				// Return with current data, wait for more
 				c.currentOffset += c.handshakeBuffer.Len()
 				return n, nil
 			}
-			checkSlice := make([]byte, SstpMethodLen)
+			checkSlice := make([]byte, MethodCheckLen)
 			numChecked, err := c.handshakeBuffer.Read(checkSlice)
 			if err != nil {
 				return n, err
 			}
-			if numChecked != SstpMethodLen {
+			if numChecked != MethodCheckLen {
 				// This shouldn't happen
 				return n, errors.New("Internal sstp WrappedConn error")
 			}
 
 			// If not SSTP, ignore further bytes and passthrough
-			if !bytes.Equal(checkSlice, []byte(SstpMethodString)) {
+			if !bytes.Equal(checkSlice, []byte(MethodCheckString)) {
 				c.ignoreFurther = true
 				return n, nil
 			}
