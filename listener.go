@@ -9,14 +9,12 @@ import (
 	"github.com/mholt/caddy"
 )
 
-// The SSTP handshake uses a Content-Length greater than an int64, so it must be modified to be compatible
-
-// Listener is a wrapper around a caddy.Listener that modifies SSTP requests
+// Listener is a wrapper around a caddy.Listener that modifies SSTP requests.
 type Listener struct {
 	caddy.Listener
 }
 
-// WrappedConn is a wrapper around a net.Conn that modifies SSTP requests
+// WrappedConn is a wrapper around a net.Conn that modifies SSTP requests.
 type WrappedConn struct {
 	net.Conn
 	capturedHandshake string
@@ -26,7 +24,7 @@ type WrappedConn struct {
 	handshakeBuffer   bytes.Buffer
 }
 
-// Accept is a wrapper around caddy.Listener.Accept() that intercepts the SSTP HTTP handshake
+// Accept is a wrapper around caddy.Listener.Accept() that intercepts the SSTP HTTP handshake.
 func (l *Listener) Accept() (net.Conn, error) {
 	c, err := l.Listener.Accept()
 	if err != nil {
@@ -36,10 +34,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 	return WrappedConn{Conn: c}, nil
 }
 
-// Overrides net.Conn.Read to modify SSTP requests
-// TODO: use buffer pools
-// This currently only works on HTTP requests, as we currently have no way intercept after SSL decryption
+// Overrides net.Conn.Read to modify SSTP requests.
+// This is needed as SSTP handshakes use a Content-Length greater than an int64, so it must be modified to be compatible.
+// This currently only works on HTTP requests, as we currently have no way intercept after SSL decryption.
+// This function is passive: it will not read more bytes than c.Conn.Read reads, and will modify them if it is needed.
 func (c WrappedConn) Read(b []byte) (int, error) {
+	// TODO: use buffer pools
 	if c.ignoreFurther {
 		return c.Conn.Read(b)
 	}
@@ -60,6 +60,11 @@ func (c WrappedConn) Read(b []byte) (int, error) {
 					return n, nil
 				}
 				c.checkedMethod = true
+			} else {
+				// Return with current data, wait for more
+				c.handshakeBuffer.Write(b)
+				c.currentOffset += len(b)
+				return n, nil
 			}
 		} else {
 			c.handshakeBuffer.Write(b)

@@ -7,12 +7,13 @@ import (
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
 
-// Server is a httpserver.Handler that handles SSTP requests
+// Server is a httpserver.Handler that handles SSTP requests.
 type Server struct {
 	NextHandler httpserver.Handler
 	testArg     string
 }
 
+// Serves SSTP requests. See httpserver.Handler.
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 	if r.Method == "SSTP_DUPLEX_POST" {
 		fmt.Print("Got a sstp request")
