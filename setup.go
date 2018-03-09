@@ -1,3 +1,5 @@
+// Package sstp is a Caddy HTTP plugin that implements the SSTP protocol.
+// This requires pppd to bridge the connection through SSTP.
 package sstp
 
 import (
