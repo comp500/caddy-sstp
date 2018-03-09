@@ -38,6 +38,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 
 // Overrides net.Conn.Read to modify SSTP requests
 // TODO: use buffer pools
+// This currently only works on HTTP requests, as we currently have no way intercept after SSL decryption
 func (c WrappedConn) Read(b []byte) (int, error) {
 	if c.ignoreFurther {
 		return c.Conn.Read(b)
