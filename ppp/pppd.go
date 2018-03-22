@@ -3,7 +3,6 @@ package ppp
 import (
 	"io"
 	"log"
-	"net"
 	"os/exec"
 )
 
@@ -18,24 +17,29 @@ type PppdInstance struct {
 	IsStarted   bool
 }
 
-// StartPppd starts pppd
-func StartPppd(pppdInstance *PppdInstance, conn net.Conn) error {
-	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, pppdInstance.args...)
+// NewPppdInstance creates a new pppd instance object
+func NewPppdInstance(outputWriter io.Writer, args []string) PppdInstance {
+	return PppdInstance{nil, nil, newUnescaper(outputWriter), args, false}
+}
+
+// Start starts pppd
+func (p PppdInstance) Start() error {
+	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, p.args...)
 	pppdCmd := exec.Command("pppd", args...)
 	pppdIn, err := pppdCmd.StdinPipe()
 	if err != nil {
 		return err
 	}
-	pppdCmd.Stdout = pppdInstance.unescaper
+	pppdCmd.Stdout = p.unescaper
 	err = pppdCmd.Start()
 	if err != nil {
 		return err
 	}
-	pppdInstance.commandInst = pppdCmd
-	pppdInstance.stdin = pppdIn
+	p.commandInst = pppdCmd
+	p.stdin = pppdIn
 	// TODO: pipe stderr to log?
 
-	pppdInstance.IsStarted = true
+	p.IsStarted = true
 
 	// TODO: remove this?
 	go func() {
@@ -46,19 +50,13 @@ func StartPppd(pppdInstance *PppdInstance, conn net.Conn) error {
 	return nil
 }
 
-// NewPppdInstance creates a new pppd instance object
-func NewPppdInstance(outputWriter io.Writer, args []string) PppdInstance {
-	return PppdInstance{nil, nil, newUnescaper(outputWriter), args, false}
-}
-
 // Kill kills pppd
 func (p PppdInstance) Kill() error {
-	if p.commandInst != nil {
+	if p.IsStarted && p.commandInst != nil {
 		err := p.commandInst.Process.Kill()
 		if err != nil {
 			return err
 		}
-		p.commandInst = nil
 	}
 	p.IsStarted = false
 	return nil
