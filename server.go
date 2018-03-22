@@ -51,7 +51,6 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 			if err != nil {
 				return http.StatusInternalServerError, errors.New("failed to hijack: " + err.Error())
 			}
-			defer clientConn.Close()
 
 			n, err := fmt.Fprintf(clientConn, "%s\r\n%s\r\n%s\r\n%s\r\n\r\n",
 				"HTTP/1.1 200 OK",
@@ -59,6 +58,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 				"Server: Microsoft-HTTPAPI/2.0",
 				"Content-Length: 18446744073709551615")
 			if err != nil {
+				clientConn.Close()
 				return http.StatusInternalServerError, errors.New("Failed to send response")
 			}
 
@@ -84,7 +84,7 @@ func (s Server) handleConnection(c net.Conn) {
 	// Shut down the connection.
 	defer c.Close()
 
-	// TODO: make more idiomatic
+	// TODO: make more idiomatic, just copied straight from sstp-go
 
 	ch := make(chan parseReturn)
 	eCh := make(chan error)
