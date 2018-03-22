@@ -6,8 +6,8 @@ import (
 	"os/exec"
 )
 
-// PppdInstance represents an instance of pppd
-type PppdInstance struct {
+// pppdConnection represents a connection to pppd
+type pppdConnection struct {
 	Config
 	commandInst *exec.Cmd
 	stdin       io.WriteCloser
@@ -15,8 +15,8 @@ type PppdInstance struct {
 	isStarted   bool
 }
 
-// Start starts pppd
-func (p *PppdInstance) start() error {
+// start starts pppd
+func (p *pppdConnection) start() error {
 	p.unescaper = newUnescaper(p.DestWriter)
 
 	// TODO: parse IP data
@@ -47,7 +47,7 @@ func (p *PppdInstance) start() error {
 }
 
 // Close kills pppd if it is still running
-func (p *PppdInstance) Close() error {
+func (p *pppdConnection) Close() error {
 	if p.isStarted && p.commandInst != nil {
 		err := p.commandInst.Process.Kill()
 		if err != nil {
@@ -58,7 +58,7 @@ func (p *PppdInstance) Close() error {
 	return nil
 }
 
-func (p *PppdInstance) Write(data []byte) (int, error) {
+func (p *pppdConnection) Write(data []byte) (int, error) {
 	// TODO: check it's still running?
 	return p.stdin.Write(pppEscape(data))
 }

@@ -50,7 +50,7 @@ func NewConnection(config Config) (*Connection, error) {
 	case ConnectionTypeNative:
 		conn = &nativeConnection{Config: config}
 	case ConnectionTypePppd:
-		conn = &PppdInstance{Config: config}
+		conn = &pppdConnection{Config: config}
 	default:
 		return nil, errors.New("Connection type not supported")
 	}
