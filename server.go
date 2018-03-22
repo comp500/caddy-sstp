@@ -3,6 +3,7 @@ package sstp
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -20,6 +21,13 @@ const MethodSstp = "SSTP_DUPLEX_POST"
 
 // RequestPath is the path that the SSTP handshake uses.
 const RequestPath = "/sra_{BA195980-CD49-458b-9E23-C84EE0ADCD75}/"
+
+// TODO: don't use this horrible function
+func handleErr(err error) {
+	if err != nil {
+		log.Fatalf("%s\n", err)
+	}
+}
 
 // Serves SSTP requests. See httpserver.Handler.
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
