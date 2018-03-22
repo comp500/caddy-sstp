@@ -1,10 +1,12 @@
-package sstp
+package plugin
 
 import (
 	"encoding/binary"
 	"errors"
 	"log"
 	"net"
+
+	"github.com/comp500/caddy-sstp/ppp"
 )
 
 func decodeHeader(input []byte) (bool, int, error) {
@@ -47,18 +49,18 @@ func parseControl(input []byte) sstpControlHeader {
 	return controlHeader
 }
 
-func handleDataPacket(data []byte, conn net.Conn, pppdInstance *pppdInstance) {
+func handleDataPacket(data []byte, conn net.Conn, pppdInstance *ppp.PppdInstance) {
 	//log.Printf("read: %v\n", dataHeader)
-	if pppdInstance.commandInst == nil {
-		log.Fatal("pppd instance not started")
-	} else {
-		_, err := pppdInstance.stdin.Write(pppEscape(data))
+	if pppdInstance.IsStarted {
+		_, err := pppdInstance.Write(data)
 		handleErr(err)
 		//log.Printf("%v bytes written to pppd", n)
+	} else {
+		log.Fatal("pppd instance not started")
 	}
 }
 
-func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdInstance *pppdInstance) {
+func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdInstance *ppp.PppdInstance) {
 	log.Printf("read: %v\n", controlHeader)
 
 	if controlHeader.MessageType == MessageTypeCallConnectRequest {
@@ -66,16 +68,12 @@ func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdIns
 		// TODO: implement Nak?
 		// -> if protocols specified by req not supported
 		// however there is only PPP currently, so not a problem
-		createPPPD(pppdInstance, conn)
+		ppp.StartPppd(pppdInstance, conn)
 		log.Print("pppd instance created")
 	} else if controlHeader.MessageType == MessageTypeCallDisconnect {
 		sendDisconnectAckPacket(conn)
-		if pppdInstance.commandInst != nil {
-			// kill pppd if disconnect
-			err := pppdInstance.commandInst.Process.Kill()
-			handleErr(err)
-			pppdInstance.commandInst = nil
-		}
+		err := pppdInstance.Kill()
+		handleErr(err)
 	} else if controlHeader.MessageType == MessageTypeEchoRequest {
 		// TODO: implement hello timer and echo request?
 		sendEchoResponsePacket(conn)

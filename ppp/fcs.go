@@ -1,4 +1,4 @@
-package sstp
+package ppp
 
 import (
 	"io"

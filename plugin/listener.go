@@ -1,4 +1,4 @@
-package sstp
+package plugin
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package sstp
+package plugin
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/comp500/caddy-sstp/ppp"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
 
@@ -90,7 +91,7 @@ func (s Server) handleConnection(c net.Conn) {
 	eCh := make(chan error)
 
 	packChan := make(chan []byte)
-	pppdInstance := pppdInstance{nil, nil, newUnescaper(packetHandler{c, packChan}), s.pppdArgs} // store null pointer to future pppd instance
+	pppdInstance := ppp.NewPppdInstance(packetHandler{c, packChan}, s.pppdArgs) // store null pointer to future pppd instance
 
 	// Start a goroutine to read from our net connection
 	go func(ch chan parseReturn, eCh chan error) {
@@ -153,12 +154,8 @@ func (s Server) handleConnection(c net.Conn) {
 		case err := <-eCh: // This case means we got an error and the goroutine has finished
 			if err == io.EOF {
 				log.Print("Client disconnected")
-				if pppdInstance.commandInst != nil {
-					// kill pppd if disconnect
-					err := pppdInstance.commandInst.Process.Kill()
-					handleErr(err)
-					pppdInstance.commandInst = nil
-				}
+				err = pppdInstance.Kill()
+				handleErr(err)
 			} else {
 				log.Fatalf("%s\n", err)
 				// handle our error then exit for loop

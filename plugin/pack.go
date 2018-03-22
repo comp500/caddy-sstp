@@ -1,4 +1,4 @@
-package sstp
+package plugin
 
 import (
 	"encoding/binary"
@@ -95,4 +95,15 @@ func packDataPacketFast(inputBytes []byte) []byte {
 	binary.BigEndian.PutUint16(packetBytes[2:4], uint16(len(packetBytes)))
 	copy(packetBytes[4:], inputBytes)
 	return packetBytes
+}
+
+type packetHandler struct {
+	conn     net.Conn
+	packChan chan []byte
+}
+
+func (p packetHandler) Write(data []byte) (int, error) {
+	packetBytes := packDataPacketFast(data)
+	p.packChan <- packetBytes
+	return len(data), nil
 }
