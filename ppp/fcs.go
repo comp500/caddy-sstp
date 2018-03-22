@@ -5,6 +5,9 @@ import (
 	"log"
 )
 
+// This file implements escaping and unescaping for ppp packet framing.
+// This is only needed for interfacing with pppd, as stdin/stdout are serial connections.
+
 /* RFC 1662
  * C.2. 16-bit FCS Computation Method
  * https://tools.ietf.org/html/rfc1662#appendix-C.2

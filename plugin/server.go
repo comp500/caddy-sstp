@@ -91,7 +91,12 @@ func (s Server) handleConnection(c net.Conn) {
 	eCh := make(chan error)
 
 	packChan := make(chan []byte)
-	pppdInstance := ppp.NewPppdInstance(packetHandler{c, packChan}, s.pppdArgs) // store null pointer to future pppd instance
+	var pppConnection ppp.Connection
+	pppConfig := ppp.Config{
+		ExtraArguments: s.pppdArgs,
+		ConnectionType: ppp.ConnectionTypePppd,
+		DestWriter:     packetHandler{c, packChan},
+	}
 
 	// Start a goroutine to read from our net connection
 	go func(ch chan parseReturn, eCh chan error) {
@@ -147,15 +152,20 @@ func (s Server) handleConnection(c net.Conn) {
 			//log.Printf("%s\n", hex.Dump(data))
 			if data.isControl {
 				header := parseControl(data.Data)
-				handleControlPacket(header, c, &pppdInstance)
+				newConn := handleControlPacket(header, c, pppConfig, pppConnection)
+				if newConn != nil {
+					pppConnection = *newConn
+				}
 			} else {
-				handleDataPacket(data.Data, c, &pppdInstance)
+				handleDataPacket(data.Data, c, pppConnection)
 			}
 		case err := <-eCh: // This case means we got an error and the goroutine has finished
 			if err == io.EOF {
 				log.Print("Client disconnected")
-				err = pppdInstance.Kill()
-				handleErr(err)
+				if pppConnection != nil {
+					err = pppConnection.Close()
+					handleErr(err)
+				}
 			} else {
 				log.Fatalf("%s\n", err)
 				// handle our error then exit for loop

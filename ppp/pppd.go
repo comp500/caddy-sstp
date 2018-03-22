@@ -6,25 +6,21 @@ import (
 	"os/exec"
 )
 
-// TODO: generalise, to custom implementation of ppp
-
 // PppdInstance represents an instance of pppd
 type PppdInstance struct {
+	Config
 	commandInst *exec.Cmd
 	stdin       io.WriteCloser
 	unescaper   pppUnescaper
-	args        []string
-	IsStarted   bool
-}
-
-// NewPppdInstance creates a new pppd instance object
-func NewPppdInstance(outputWriter io.Writer, args []string) PppdInstance {
-	return PppdInstance{nil, nil, newUnescaper(outputWriter), args, false}
+	isStarted   bool
 }
 
 // Start starts pppd
-func (p PppdInstance) Start() error {
-	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, p.args...)
+func (p *PppdInstance) start() error {
+	p.unescaper = newUnescaper(p.DestWriter)
+
+	// TODO: parse IP data
+	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, p.ExtraArguments...)
 	pppdCmd := exec.Command("pppd", args...)
 	pppdIn, err := pppdCmd.StdinPipe()
 	if err != nil {
@@ -39,7 +35,7 @@ func (p PppdInstance) Start() error {
 	p.stdin = pppdIn
 	// TODO: pipe stderr to log?
 
-	p.IsStarted = true
+	p.isStarted = true
 
 	// TODO: remove this?
 	go func() {
@@ -50,18 +46,19 @@ func (p PppdInstance) Start() error {
 	return nil
 }
 
-// Kill kills pppd
-func (p PppdInstance) Kill() error {
-	if p.IsStarted && p.commandInst != nil {
+// Close kills pppd if it is still running
+func (p *PppdInstance) Close() error {
+	if p.isStarted && p.commandInst != nil {
 		err := p.commandInst.Process.Kill()
 		if err != nil {
 			return err
 		}
 	}
-	p.IsStarted = false
+	p.isStarted = false
 	return nil
 }
 
-func (p PppdInstance) Write(data []byte) (int, error) {
+func (p *PppdInstance) Write(data []byte) (int, error) {
+	// TODO: check it's still running?
 	return p.stdin.Write(pppEscape(data))
 }

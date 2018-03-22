@@ -49,10 +49,10 @@ func parseControl(input []byte) sstpControlHeader {
 	return controlHeader
 }
 
-func handleDataPacket(data []byte, conn net.Conn, pppdInstance *ppp.PppdInstance) {
+func handleDataPacket(data []byte, conn net.Conn, pppConnection ppp.Connection) {
 	//log.Printf("read: %v\n", dataHeader)
-	if pppdInstance.IsStarted {
-		_, err := pppdInstance.Write(data)
+	if pppConnection != nil {
+		_, err := pppConnection.Write(data)
 		handleErr(err)
 		//log.Printf("%v bytes written to pppd", n)
 	} else {
@@ -60,7 +60,7 @@ func handleDataPacket(data []byte, conn net.Conn, pppdInstance *ppp.PppdInstance
 	}
 }
 
-func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdInstance *ppp.PppdInstance) {
+func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppConfig ppp.Config, pppConnection ppp.Connection) *ppp.Connection {
 	log.Printf("read: %v\n", controlHeader)
 
 	if controlHeader.MessageType == MessageTypeCallConnectRequest {
@@ -68,12 +68,13 @@ func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdIns
 		// TODO: implement Nak?
 		// -> if protocols specified by req not supported
 		// however there is only PPP currently, so not a problem
-		err := pppdInstance.Start()
+		pppConn, err := ppp.NewConnection(pppConfig)
 		handleErr(err)
 		log.Print("pppd instance created")
+		return pppConn
 	} else if controlHeader.MessageType == MessageTypeCallDisconnect {
 		sendDisconnectAckPacket(conn)
-		err := pppdInstance.Kill()
+		err := pppConnection.Close()
 		handleErr(err)
 	} else if controlHeader.MessageType == MessageTypeEchoRequest {
 		// TODO: implement hello timer and echo request?
@@ -83,4 +84,6 @@ func handleControlPacket(controlHeader sstpControlHeader, conn net.Conn, pppdIns
 		log.Fatal("error encountered, connection aborted")
 	}
 	// TODO: implement connected
+
+	return nil
 }
