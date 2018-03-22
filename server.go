@@ -39,7 +39,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 				return http.StatusHTTPVersionNotSupported, errors.New("Unsupported HTTP major version: " + strconv.Itoa(r.ProtoMajor))
 			}
 
-			fmt.Print("Got a sstp request")
+			log.Print("Got a sstp request")
 
 			hijacker, ok := w.(http.Hijacker)
 			if !ok {
@@ -62,7 +62,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 				return http.StatusInternalServerError, errors.New("Failed to send response")
 			}
 
-			fmt.Printf("Written %v bytes http response", n)
+			log.Printf("Written %v bytes http response", n)
 
 			// Pass the connection to handleConnection
 			go s.handleConnection(clientConn)
@@ -70,7 +70,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {
 			return 0, nil
 		}
 	}
-	fmt.Print("Got a request")
+	log.Print("Got a request")
 	return s.NextHandler.ServeHTTP(w, r)
 }
 

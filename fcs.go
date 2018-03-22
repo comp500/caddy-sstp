@@ -1,8 +1,8 @@
 package sstp
 
 import (
-	"fmt"
 	"io"
+	"log"
 )
 
 /* RFC 1662
@@ -136,7 +136,7 @@ func (p pppUnescaper) Write(data []byte) (int, error) {
 			p.currentPacket[p.currentPos] = v
 			p.currentPos++
 		} else {
-			fmt.Print("Packet trimmed")
+			log.Print("Packet trimmed")
 		}
 		bytesWritten++
 	}

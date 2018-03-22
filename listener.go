@@ -3,7 +3,7 @@ package sstp
 import (
 	"bytes"
 	"errors"
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/mholt/caddy"
@@ -62,7 +62,7 @@ func (c *WrappedConn) Read(b []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
-	fmt.Printf("Read %v bytes\n", n)
+	log.Printf("Read %v bytes", n)
 
 	// Check the method
 	if !c.checkedMethod {
@@ -106,7 +106,7 @@ func (c *WrappedConn) Read(b []byte) (int, error) {
 		}
 	}
 
-	fmt.Print("SSTP packet received!")
+	log.Print("SSTP packet received!")
 
 	// TODO: fix for multiple Read() calls, if Content-Length is split across multiple
 	// Find Content-Length
@@ -120,7 +120,7 @@ func (c *WrappedConn) Read(b []byte) (int, error) {
 		}
 		c.ignoreFurther = true
 	} else {
-		fmt.Print("Content-Length not found")
+		log.Print("Content-Length not found")
 	}
 
 	return n, nil
