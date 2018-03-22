@@ -63,7 +63,7 @@ type sstpControlHeader struct {
 // AttributeID is the type of attribute this attribute is
 type AttributeID uint8
 
-// Constants for MessageType values
+// Constants for AttributeID values
 const (
 	AttributeIDEncapsulatedProtocolID = 1
 	AttributeIDStatusInfo             = 2
