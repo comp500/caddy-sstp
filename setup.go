@@ -18,10 +18,7 @@ func setup(c *caddy.Controller) error {
 	server := &Server{}
 
 	for c.Next() { // skip the directive name
-		if !c.NextArg() { // expect at least one value
-			return c.ArgErr() // otherwise it's an error
-		}
-		server.testArg = c.Val() // use the value
+		server.pppdArgs = c.RemainingArgs()
 	}
 
 	cfg := httpserver.GetConfig(c)

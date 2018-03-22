@@ -15,7 +15,7 @@ import (
 // Server is a httpserver.Handler that handles SSTP requests.
 type Server struct {
 	NextHandler httpserver.Handler
-	testArg     string
+	pppdArgs    []string
 }
 
 // MethodSstp is the SSTP handshake's HTTP method.
@@ -90,7 +90,7 @@ func (s Server) handleConnection(c net.Conn) {
 	eCh := make(chan error)
 
 	packChan := make(chan []byte)
-	pppdInstance := pppdInstance{nil, nil, newUnescaper(packetHandler{c, packChan})} // store null pointer to future pppd instance
+	pppdInstance := pppdInstance{nil, nil, newUnescaper(packetHandler{c, packChan}), s.pppdArgs} // store null pointer to future pppd instance
 
 	// Start a goroutine to read from our net connection
 	go func(ch chan parseReturn, eCh chan error) {

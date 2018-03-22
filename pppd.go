@@ -11,6 +11,7 @@ type pppdInstance struct {
 	commandInst *exec.Cmd
 	stdin       io.WriteCloser
 	unescaper   pppUnescaper
+	args        []string
 }
 
 type packetHandler struct {
@@ -25,7 +26,8 @@ func (p packetHandler) Write(data []byte) (int, error) {
 }
 
 func createPPPD(pppdInstance *pppdInstance, conn net.Conn) {
-	pppdCmd := exec.Command("pppd", "notty", "file", "/etc/ppp/options.sstpd", "115200")
+	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, pppdInstance.args...)
+	pppdCmd := exec.Command("pppd", args...)
 	pppdIn, err := pppdCmd.StdinPipe()
 	handleErr(err)
 	pppdCmd.Stdout = pppdInstance.unescaper
