@@ -21,8 +21,8 @@ type ConnectionType int
 
 // Constants for ConnectionType values
 const (
-	ConnectionTypeNative = 0
-	ConnectionTypePppd   = 1
+	ConnectionTypeNative ConnectionType = iota
+	ConnectionTypePppd
 )
 
 func (k ConnectionType) String() string {

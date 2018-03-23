@@ -17,15 +17,15 @@ type MessageType uint16
 
 // Constants for MessageType values
 const (
-	MessageTypeCallConnectRequest = 1
-	MessageTypeCallConnectAck     = 2
-	MessageTypeCallConnectNak     = 3
-	MessageTypeCallConnected      = 4
-	MessageTypeCallAbort          = 5
-	MessageTypeCallDisconnect     = 6
-	MessageTypeCallDisconnectAck  = 7
-	MessageTypeEchoRequest        = 8
-	MessageTypeEchoResponse       = 9
+	MessageTypeCallConnectRequest MessageType = 1
+	MessageTypeCallConnectAck     MessageType = 2
+	MessageTypeCallConnectNak     MessageType = 3
+	MessageTypeCallConnected      MessageType = 4
+	MessageTypeCallAbort          MessageType = 5
+	MessageTypeCallDisconnect     MessageType = 6
+	MessageTypeCallDisconnectAck  MessageType = 7
+	MessageTypeEchoRequest        MessageType = 8
+	MessageTypeEchoResponse       MessageType = 9
 )
 
 func (k MessageType) String() string {
@@ -65,10 +65,10 @@ type AttributeID uint8
 
 // Constants for AttributeID values
 const (
-	AttributeIDEncapsulatedProtocolID = 1
-	AttributeIDStatusInfo             = 2
-	AttributeIDCryptoBinding          = 3
-	AttributeIDCryptoBindingReq       = 4
+	AttributeIDEncapsulatedProtocolID AttributeID = 1
+	AttributeIDStatusInfo             AttributeID = 2
+	AttributeIDCryptoBinding          AttributeID = 3
+	AttributeIDCryptoBindingReq       AttributeID = 4
 )
 
 func (k AttributeID) String() string {

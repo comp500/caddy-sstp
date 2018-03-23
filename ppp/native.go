@@ -36,24 +36,24 @@ type linkStatus int
 
 // Constants for linkStatus values
 const (
-	linkStatusDead         = 0
-	linkStatusEstablish    = 1
-	linkStatusAuthenticate = 2
-	linkStatusNetwork      = 3
-	linkStatusTerminate    = 4
+	linkStatusDead linkStatus = iota
+	linkStatusEstablish
+	linkStatusAuthenticate
+	linkStatusNetwork
+	linkStatusTerminate
 )
 
-// protocolType is the protocol that this packet uses
+// protocolType is the protocol that this PPP packet uses
 type protocolType uint16
 
 // Constants for protocolType values
 const (
-	protocolTypeLCP  = 0xC021
-	protocolTypePAP  = 0xC023
-	protocolTypeCHAP = 0xC223
-	protocolTypeIPCP = 0x8021
-	protocolTypeIP   = 0x0021
-	protocolTypeCCP  = 0x80fd
+	protocolTypeLCP  protocolType = 0xC021
+	protocolTypePAP  protocolType = 0xC023
+	protocolTypeCHAP protocolType = 0xC223
+	protocolTypeIPCP protocolType = 0x8021
+	protocolTypeIP   protocolType = 0x0021
+	protocolTypeCCP  protocolType = 0x80fd
 )
 
 // HDLC-like header flag, given at the start of some packets for each PPP connection, both directions
@@ -74,19 +74,21 @@ func (k protocolType) String() string {
 		return "IP"
 	case protocolTypeCCP:
 		return "CCP"
+	case hdlcFlag:
+		return "Unknown (HDLC flag)"
 	default:
-		return fmt.Sprintf("Unknown(%d)", k)
+		return fmt.Sprintf("Unknown (%d)", k)
 	}
 }
 
 func parsePPP(data []byte, p *nativeConnection) error {
 	// TODO: parse packets for *every* protocol
-	protocolNumber := binary.BigEndian.Uint16(data[0:2])
+	protocolNumber := protocolType(binary.BigEndian.Uint16(data[0:2]))
 
 	if protocolNumber == hdlcFlag {
 		// If HDLC flag found, remove it and parse again
 		data = data[2:]
-		protocolNumber = binary.BigEndian.Uint16(data[0:2])
+		protocolNumber = protocolType(binary.BigEndian.Uint16(data[0:2]))
 	}
 
 	if p.linkStatus == linkStatusDead {
@@ -119,7 +121,7 @@ func parsePPP(data []byte, p *nativeConnection) error {
 	}
 
 	if p.linkStatus == linkStatusNetwork {
-		if data[0] == protocolTypeIP {
+		if protocolType(data[0]) == protocolTypeIP {
 			log.Print("IP")
 			return nil
 		}
@@ -152,6 +154,57 @@ func parsePPP(data []byte, p *nativeConnection) error {
 	}
 
 	return nil
+}
+
+// controlCode is the LCP/IPCP/CCP control protocol message code of this packet
+type controlCode uint16
+
+// Constants for controlCode values
+// See https://www.iana.org/assignments/ppp-numbers/ppp-numbers.xml for the full list
+// Don't use iota, as each number MUST be equal to given
+const (
+	controlCodeConfigureRequest controlCode = 1
+	controlCodeConfigureAck     controlCode = 2
+	controlCodeConfigureNak     controlCode = 3
+	controlCodeConfigureReject  controlCode = 4
+	controlCodeTerminateRequest controlCode = 5
+	controlCodeTerminateAck     controlCode = 6
+	controlCodeReject           controlCode = 7
+	controlCodeProtocolReject   controlCode = 8
+	controlCodeEchoRequest      controlCode = 9
+	controlCodeEchoReply        controlCode = 10
+	controlCodeDiscardRequest   controlCode = 11
+	// implement Identification and Time-Remaining?
+	// implement CCP?
+)
+
+func (k controlCode) String() string {
+	switch k {
+	case controlCodeConfigureRequest:
+		return "Configure-Request"
+	case controlCodeConfigureAck:
+		return "Configure-Ack"
+	case controlCodeConfigureNak:
+		return "Configure-Nak"
+	case controlCodeConfigureReject:
+		return "Configure-Reject"
+	case controlCodeTerminateRequest:
+		return "Terminate-Request"
+	case controlCodeTerminateAck:
+		return "Terminate-Ack"
+	case controlCodeReject:
+		return "Code-Reject"
+	case controlCodeProtocolReject:
+		return "Protocol-Reject"
+	case controlCodeEchoRequest:
+		return "Echo-Request"
+	case controlCodeEchoReply:
+		return "Echo-Reply"
+	case controlCodeDiscardRequest:
+		return "Discard-Request"
+	default:
+		return fmt.Sprintf("Unknown (%d)", k)
+	}
 }
 
 func parseLCP(data []byte, p *nativeConnection) error {
