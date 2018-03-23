@@ -2,6 +2,7 @@ package ppp
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log"
 )
@@ -11,9 +12,13 @@ type nativeConnection struct {
 	Config
 	linkStatus     linkStatus
 	firstFrameSent bool
+	hasBeenClosed  bool
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
+	if p.hasBeenClosed {
+		return 0, errors.New("ppp write after close")
+	}
 	err := parsePPP(data, p)
 	if err != nil {
 		return 0, err
@@ -22,6 +27,8 @@ func (p *nativeConnection) Write(data []byte) (int, error) {
 }
 
 func (p *nativeConnection) Close() error {
+	p.linkStatus = linkStatusDead
+	p.hasBeenClosed = true
 	return nil
 }
 
@@ -208,5 +215,6 @@ func (k controlCode) String() string {
 }
 
 func parseLCP(data []byte, p *nativeConnection) error {
+	log.Printf("%s", controlCode(data[2]))
 	return nil
 }
