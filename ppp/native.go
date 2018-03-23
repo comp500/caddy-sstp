@@ -15,6 +15,8 @@ type nativeConnection struct {
 	hasBeenClosed  bool
 	// Indicates whether Address-and-Control-Field-Compression is applied
 	acfcApplied bool
+	// Indicates whether Protocol-Field-Compression is applied
+	pfcApplied bool
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
@@ -97,7 +99,19 @@ func parsePPP(data []byte, p *nativeConnection) error {
 		data = data[2:]
 	}
 
-	protocolNumber := protocolType(binary.BigEndian.Uint16(data[0:2]))
+	var protocolNumber protocolType
+
+	// If protocol field is compressed, uncompress protocolNumber
+	// Test if LSB is set
+	if p.pfcApplied && (data[0]&1 == 1) {
+		protocolNumber = protocolType(data[0])
+		// Shift data along
+		data = data[1:]
+	} else {
+		protocolNumber = protocolType(binary.BigEndian.Uint16(data[0:2]))
+		// Shift data along
+		data = data[2:]
+	}
 
 	if p.linkStatus == linkStatusDead {
 		// Data is received, wake up
@@ -129,12 +143,9 @@ func parsePPP(data []byte, p *nativeConnection) error {
 	}
 
 	if p.linkStatus == linkStatusNetwork {
-		if protocolType(data[0]) == protocolTypeIP {
-			log.Print("IP")
-			return nil
-		}
-
 		switch protocolNumber {
+		case protocolTypeIP:
+			log.Print("IP")
 		// for protocols known, but not used in this phase
 		case protocolTypePAP, protocolTypeCHAP:
 			log.Print("Discarding packet")
@@ -216,6 +227,6 @@ func (k controlCode) String() string {
 }
 
 func parseLCP(data []byte, p *nativeConnection) error {
-	log.Printf("%s", controlCode(data[2]))
+	log.Printf("%s", controlCode(data[0]))
 	return nil
 }
