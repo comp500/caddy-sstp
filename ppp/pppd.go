@@ -19,9 +19,11 @@ type pppdConnection struct {
 func (p *pppdConnection) start() error {
 	p.unescaper = newUnescaper(p.DestWriter)
 
-	// TODO: parse IP data
-	ipArg := p.SrcIP.String() + ":" + p.DestIP.String()
-	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, ipArg)
+	args := []string{"notty", "file", "/etc/ppp/options.sstpd"}
+	if p.SrcIP != nil && p.DestIP != nil {
+		ipArg := p.SrcIP.String() + ":" + p.DestIP.String()
+		args = append(args, ipArg)
+	}
 	args = append(args, p.ExtraArguments...)
 	pppdCmd := exec.Command("pppd", args...)
 	pppdIn, err := pppdCmd.StdinPipe()

@@ -21,13 +21,23 @@ func setup(c *caddy.Controller) error {
 
 	for c.Next() { // skip the directive name
 		for c.NextBlock() {
-			switch c.Val() {
-			case "pppdArgs":
-				server.extraArgs = c.RemainingArgs()
-			case "srcIP":
-				server.srcIP = net.ParseIP(c.Val())
-			case "destIP":
-				server.destIP = net.ParseIP(c.Val())
+			directive := c.Val()
+			args := c.RemainingArgs()
+			switch directive {
+			case "args":
+				server.extraArgs = args
+			case "src_ip":
+				if len(args) != 1 {
+					return c.ArgErr()
+				}
+				server.srcIP = net.ParseIP(args[0])
+			case "dest_ip":
+				if len(args) != 1 {
+					return c.ArgErr()
+				}
+				server.destIP = net.ParseIP(args[0])
+			default:
+				return c.ArgErr()
 			}
 		}
 	}
