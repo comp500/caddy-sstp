@@ -14,7 +14,10 @@ type nativeConnection struct {
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
-	parsePPP(data, p)
+	err := parsePPP(data, p)
+	if err != nil {
+		return 0, err
+	}
 	return len(data), nil
 }
 
@@ -76,7 +79,7 @@ func (k protocolType) String() string {
 	}
 }
 
-func parsePPP(data []byte, p *nativeConnection) {
+func parsePPP(data []byte, p *nativeConnection) error {
 	// TODO: parse packets for *every* protocol
 	protocolNumber := binary.BigEndian.Uint16(data[0:2])
 
@@ -94,7 +97,7 @@ func parsePPP(data []byte, p *nativeConnection) {
 	if p.linkStatus == linkStatusEstablish {
 		if protocolNumber == protocolTypeLCP {
 			log.Print("LCP")
-			return
+			return parseLCP(data, p)
 		}
 		log.Print("Discarding packet")
 		// silently discard, only allow LCP
@@ -104,6 +107,7 @@ func parsePPP(data []byte, p *nativeConnection) {
 		switch protocolNumber {
 		case protocolTypeLCP:
 			log.Print("LCP")
+			return parseLCP(data, p)
 		case protocolTypePAP:
 			log.Print("PAP")
 		case protocolTypeCHAP:
@@ -117,7 +121,7 @@ func parsePPP(data []byte, p *nativeConnection) {
 	if p.linkStatus == linkStatusNetwork {
 		if data[0] == protocolTypeIP {
 			log.Print("IP")
-			return
+			return nil
 		}
 
 		switch protocolNumber {
@@ -127,6 +131,7 @@ func parsePPP(data []byte, p *nativeConnection) {
 			// silently discard
 		case protocolTypeLCP:
 			log.Print("LCP")
+			return parseLCP(data, p)
 		case protocolTypeIPCP:
 			log.Print("IPCP")
 		case protocolTypeCCP:
@@ -140,13 +145,15 @@ func parsePPP(data []byte, p *nativeConnection) {
 	if p.linkStatus == linkStatusTerminate {
 		if protocolNumber == protocolTypeLCP {
 			log.Print("LCP")
-			return
+			return parseLCP(data, p)
 		}
 		log.Print("Discarding packet")
 		// silently discard, only allow LCP
 	}
+
+	return nil
 }
 
-func sendLCPEchoRequest() {
-
+func parseLCP(data []byte, p *nativeConnection) error {
+	return nil
 }
