@@ -9,7 +9,8 @@ import (
 // This file manages pppd connections for the native (pure Go) connection type.
 type nativeConnection struct {
 	Config
-	linkStatus linkStatus
+	linkStatus     linkStatus
+	firstFrameSent bool
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
@@ -22,7 +23,7 @@ func (p *nativeConnection) Close() error {
 }
 
 func (p *nativeConnection) start() error {
-	echoRequest := [...]byte{0xc0, 0x21, 0x09, 0x00, 0x00, 0x08, 0x58, 0xa5, 0xe7, 0xc2}
+	echoRequest := [...]byte{0xff, 0x03, 0xc0, 0x21, 0x09, 0x00, 0x00, 0x08, 0x58, 0xa5, 0xe7, 0xc2}
 	p.DestWriter.Write(echoRequest[:])
 	return nil
 }
@@ -52,6 +53,10 @@ const (
 	protocolTypeCCP  = 0x80fd
 )
 
+// HDLC-like header flag, given at the start of some packets for each PPP connection, both directions
+// TODO: When does this happen, when should it be applied?
+const hdlcFlag = 0xff03
+
 func (k protocolType) String() string {
 	switch k {
 	case protocolTypeLCP:
@@ -75,14 +80,15 @@ func parsePPP(data []byte, p *nativeConnection) {
 	// TODO: parse packets for *every* protocol
 	protocolNumber := binary.BigEndian.Uint16(data[0:2])
 
+	if protocolNumber == hdlcFlag {
+		// If HDLC flag found, remove it and parse again
+		data = data[2:]
+		protocolNumber = binary.BigEndian.Uint16(data[0:2])
+	}
+
 	if p.linkStatus == linkStatusDead {
-		// only wake up if LCP Echo-Response is sent
-		if protocolNumber == protocolTypeLCP {
-			log.Print("LCP")
-			return
-		}
-		log.Print("Discarding packet")
-		// silently discard, only allow LCP
+		// Data is received, wake up
+		p.linkStatus = linkStatusEstablish
 	}
 
 	if p.linkStatus == linkStatusEstablish {
