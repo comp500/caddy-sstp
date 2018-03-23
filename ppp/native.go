@@ -13,6 +13,8 @@ type nativeConnection struct {
 	linkStatus     linkStatus
 	firstFrameSent bool
 	hasBeenClosed  bool
+	// Indicates whether Address-and-Control-Field-Compression is applied
+	acfcApplied bool
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
@@ -63,9 +65,9 @@ const (
 	protocolTypeCCP  protocolType = 0x80fd
 )
 
-// HDLC-like header flag, given at the start of some packets for each PPP connection, both directions
-// TODO: When does this happen, when should it be applied?
-const hdlcFlag = 0xff03
+// accessControlFields are the Address and Control fields, often interpreted as a unknown protocol
+// ACFC (Address-and-Control-Field-Compression) removes this
+const accessControlFields = 0xff03
 
 func (k protocolType) String() string {
 	switch k {
@@ -81,8 +83,8 @@ func (k protocolType) String() string {
 		return "IP"
 	case protocolTypeCCP:
 		return "CCP"
-	case hdlcFlag:
-		return "Unknown (HDLC flag)"
+	case accessControlFields:
+		return "Unknown (Access/Control fields)"
 	default:
 		return fmt.Sprintf("Unknown (%d)", k)
 	}
@@ -90,13 +92,12 @@ func (k protocolType) String() string {
 
 func parsePPP(data []byte, p *nativeConnection) error {
 	// TODO: parse packets for *every* protocol
-	protocolNumber := protocolType(binary.BigEndian.Uint16(data[0:2]))
-
-	if protocolNumber == hdlcFlag {
-		// If HDLC flag found, remove it and parse again
+	if !p.acfcApplied {
+		// If address and control field is not compressed, remove it
 		data = data[2:]
-		protocolNumber = protocolType(binary.BigEndian.Uint16(data[0:2]))
 	}
+
+	protocolNumber := protocolType(binary.BigEndian.Uint16(data[0:2]))
 
 	if p.linkStatus == linkStatusDead {
 		// Data is received, wake up
