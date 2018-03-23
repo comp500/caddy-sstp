@@ -31,11 +31,17 @@ func setup(c *caddy.Controller) error {
 					return c.ArgErr()
 				}
 				server.srcIP = net.ParseIP(args[0])
+				if server.srcIP == nil { // parsing failed
+					return c.ArgErr()
+				}
 			case "dest_ip":
 				if len(args) != 1 {
 					return c.ArgErr()
 				}
 				server.destIP = net.ParseIP(args[0])
+				if server.destIP == nil { // parsing failed
+					return c.ArgErr()
+				}
 			default:
 				return c.ArgErr()
 			}
