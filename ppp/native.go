@@ -22,6 +22,8 @@ func (p *nativeConnection) Close() error {
 }
 
 func (p *nativeConnection) start() error {
+	echoRequest := [...]byte{0xc0, 0x21, 0x09, 0x00, 0x00, 0x08, 0x58, 0xa5, 0xe7, 0xc2}
+	p.DestWriter.Write(echoRequest[:])
 	return nil
 }
 
