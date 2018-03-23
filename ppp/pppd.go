@@ -20,7 +20,9 @@ func (p *pppdConnection) start() error {
 	p.unescaper = newUnescaper(p.DestWriter)
 
 	// TODO: parse IP data
-	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, p.ExtraArguments...)
+	ipArg := p.SrcIP.String() + ":" + p.DestIP.String()
+	args := append([]string{"notty", "file", "/etc/ppp/options.sstpd"}, ipArg)
+	args = append(args, p.ExtraArguments...)
 	pppdCmd := exec.Command("pppd", args...)
 	pppdIn, err := pppdCmd.StdinPipe()
 	if err != nil {

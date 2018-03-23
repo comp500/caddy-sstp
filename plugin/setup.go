@@ -3,6 +3,8 @@
 package plugin
 
 import (
+	"net"
+
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
@@ -18,7 +20,16 @@ func setup(c *caddy.Controller) error {
 	server := &Server{}
 
 	for c.Next() { // skip the directive name
-		server.pppdArgs = c.RemainingArgs()
+		for c.NextBlock() {
+			switch c.Val() {
+			case "pppdArgs":
+				server.extraArgs = c.RemainingArgs()
+			case "srcIP":
+				server.srcIP = net.ParseIP(c.Val())
+			case "destIP":
+				server.destIP = net.ParseIP(c.Val())
+			}
+		}
 	}
 
 	cfg := httpserver.GetConfig(c)

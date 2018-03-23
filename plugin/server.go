@@ -16,7 +16,9 @@ import (
 // Server is a httpserver.Handler that handles SSTP requests.
 type Server struct {
 	NextHandler httpserver.Handler
-	pppdArgs    []string
+	destIP      net.IP
+	srcIP       net.IP
+	extraArgs   []string
 }
 
 // MethodSstp is the SSTP handshake's HTTP method.
@@ -93,7 +95,9 @@ func (s Server) handleConnection(c net.Conn) {
 	packChan := make(chan []byte)
 	var pppConnection ppp.Connection
 	pppConfig := ppp.Config{
-		ExtraArguments: s.pppdArgs,
+		DestIP:         s.destIP,
+		SrcIP:          s.srcIP,
+		ExtraArguments: s.extraArgs,
 		ConnectionType: ppp.ConnectionTypePppd,
 		DestWriter:     packetHandler{c, packChan},
 	}
