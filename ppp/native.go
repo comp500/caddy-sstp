@@ -256,6 +256,19 @@ func (k lcpOption) String() string {
 }
 
 func parseLCP(data []byte, p *nativeConnection) error {
-	log.Printf("%s", controlCode(data[0]))
+	controlCode := controlCode(data[0])
+	// TODO implement identifier?
+	packetLength := binary.BigEndian.Uint16(data[2:4])
+
+	// Shift data along, trim to packetLength
+	data = data[4:packetLength]
+
+	switch controlCode {
+	case controlCodeConfigureRequest:
+		log.Printf("It's a Configure-Request")
+	default:
+		log.Printf("%s not implemented", controlCode)
+	}
+
 	return nil
 }
