@@ -49,6 +49,52 @@ const (
 	cpTimerLength  = 3 * time.Second
 )
 
+// CP automaton actions
+
+// This-Layer-Up
+func (p *controlProtocolHelper) tlu() error {
+	return nil
+}
+
+// This-Layer-Down
+func (p *controlProtocolHelper) tld() error {
+	// TODO: THIS-LAYER-DOWN
+	// - should signal to upper layers that it is leaving Opened state
+	// - e.g. signal Down event to NCP/Auth/LQP
+	return nil
+}
+
+// This-Layer-Started
+func (p *controlProtocolHelper) tls() error {
+	// TODO: THIS-LAYER-STARTED
+	// - should signal to lower layers to start
+	// - once started, lcpUp should be called
+	return nil
+}
+
+// This-Layer-Finished
+func (p *controlProtocolHelper) tlf() error {
+	// TODO: THIS-LAYER-FINISHED
+	// - advance to Link Dead phase in PPP
+	return nil
+}
+
+// Initialize-Restart-Count
+func (p *controlProtocolHelper) irc(isTerminate bool) error {
+	if isTerminate {
+		p.terminateCount = cpMaxTerminate
+	} else {
+		p.configureCount = cpMaxConfigure
+	}
+	p.resetTimer()
+	return nil
+}
+
+// Zero-Restart-Count
+func (p *controlProtocolHelper) zrc() error {
+	return nil
+}
+
 // CP automaton events, see RFC1661 section 4.1
 
 func (p *controlProtocolHelper) Up() error {
@@ -56,10 +102,12 @@ func (p *controlProtocolHelper) Up() error {
 	case cpStateInitial:
 		p.state = cpStateClosed
 	case cpStateStarting:
-		p.configureCount = cpMaxConfigure
-		p.resetTimer()
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
 		// TODO: store corresponding request for timer?
-		err := p.sendConfigureRequest(p)
+		err = p.sendConfigureRequest(p)
 		if err != nil {
 			return err
 		}
@@ -75,18 +123,20 @@ func (p *controlProtocolHelper) Down() error {
 	case cpStateClosed:
 		p.state = cpStateInitial
 	case cpStateStopped:
-		// TODO: THIS-LAYER-STARTED
-		// - should signal to lower layers to start
-		// - once started, lcpUp should be called
+		err := p.tls()
+		if err != nil {
+			return err
+		}
 		p.state = cpStateStarting
 	case cpStateClosing:
 		p.state = cpStateInitial
 	case cpStateStopping, cpStateReqSent, cpStateAckReceived, cpStateAckSent:
 		p.state = cpStateStarting
 	case cpStateOpened:
-		// TODO: THIS-LAYER-DOWN
-		// - should signal to upper layers that it is leaving Opened state
-		// - e.g. signal Down event to NCP/Auth/LQP
+		err := p.tld()
+		if err != nil {
+			return err
+		}
 		p.state = cpStateStarting
 	default:
 		return ErrCpAutomaton
@@ -97,17 +147,20 @@ func (p *controlProtocolHelper) Down() error {
 func (p *controlProtocolHelper) Open() error {
 	switch p.state {
 	case cpStateInitial:
-		// TODO: THIS-LAYER-STARTED
-		// - should signal to lower layers to start
-		// - once started, lcpUp should be called
+		err := p.tls()
+		if err != nil {
+			return err
+		}
 		p.state = cpStateStarting
 	case cpStateStarting:
 		// Do nothing, 1 -> 1
 	case cpStateClosed:
-		p.configureCount = cpMaxConfigure
-		p.resetTimer()
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
 		// TODO: store corresponding request for timer?
-		err := p.sendConfigureRequest(p)
+		err = p.sendConfigureRequest(p)
 		if err != nil {
 			return err
 		}
@@ -137,8 +190,10 @@ func (p *controlProtocolHelper) Close() error {
 	case cpStateInitial:
 		// Do nothing, 0 -> 0
 	case cpStateStarting:
-		// TODO: THIS-LAYER-FINISHED
-		// - advance to Link Dead phase in PPP
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
 		p.state = cpStateInitial
 	case cpStateClosed:
 		// Do nothing, 2 -> 2
@@ -149,15 +204,18 @@ func (p *controlProtocolHelper) Close() error {
 	case cpStateStopping:
 		p.state = cpStateClosing
 	case cpStateOpened:
-		// TODO: THIS-LAYER-DOWN
-		// - should signal to upper layers that it is leaving Opened state
-		// - e.g. signal Down event to NCP/Auth/LQP
+		err := p.tld()
+		if err != nil {
+			return err
+		}
 		fallthrough
 	case cpStateReqSent, cpStateAckReceived, cpStateAckSent:
-		p.terminateCount = cpMaxTerminate
-		p.resetTimer()
+		err := p.irc(true)
+		if err != nil {
+			return err
+		}
 		// TODO: store corresponding request for timer?
-		err := p.sendTerminateRequest(p)
+		err = p.sendTerminateRequest(p)
 		if err != nil {
 			return err
 		}
@@ -186,30 +244,38 @@ func (p *controlProtocolHelper) timeoutTriggered() error {
 	if p.configureCount > 0 {
 		switch p.state {
 		case cpStateClosing, cpStateStopping:
-			p.sendTerminateRequest(p)
+			err := p.sendTerminateRequest(p)
+			if err != nil {
+				return err
+			}
 		case cpStateAckReceived:
 			p.state = cpStateReqSent
 			fallthrough
 		case cpStateReqSent, cpStateAckSent:
-			p.sendConfigureRequest(p)
+			err := p.sendConfigureRequest(p)
+			if err != nil {
+				return err
+			}
 		default:
 			return ErrCpAutomaton
 		}
 	} else {
 		switch p.state {
 		case cpStateClosing:
-			// TODO: THIS-LAYER-FINISHED
-			// - advance to Link Dead phase in PPP
+			err := p.tlf()
+			if err != nil {
+				return err
+			}
 			p.state = cpStateClosed
-		case cpStateStopping:
-			// TODO: THIS-LAYER-FINISHED
-			// - advance to Link Dead phase in PPP
-			p.state = cpStateStopped
 		case cpStateReqSent, cpStateAckReceived, cpStateAckSent:
-			// TODO: THIS-LAYER-FINISHED
-			// - advance to Link Dead phase in PPP
-			p.state = cpStateStopped
 			// passive?
+			fallthrough
+		case cpStateStopping:
+			err := p.tlf()
+			if err != nil {
+				return err
+			}
+			p.state = cpStateStopped
 		default:
 			return ErrCpAutomaton
 		}
