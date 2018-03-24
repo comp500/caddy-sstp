@@ -10,15 +10,13 @@ import (
 // This file manages pppd connections for the native (pure Go) connection type.
 type nativeConnection struct {
 	Config
-	linkStatus      linkStatus
-	Vnat            bool
-	firstFrameSent  bool
-	hasBeenClosed   bool
-	acfcApplied     bool // Indicates whether Address-and-Control-Field-Compression is applied
-	pfcApplied      bool // Indicates whether Protocol-Field-Compression is applied
-	lcpState        lcpState
-	lcpRestartCount int
-	lcpFailureCount int
+	linkStatus     linkStatus
+	Vnat           bool
+	firstFrameSent bool
+	hasBeenClosed  bool
+	acfcApplied    bool // Indicates whether Address-and-Control-Field-Compression is applied
+	pfcApplied     bool // Indicates whether Protocol-Field-Compression is applied
+	lcpHandler     controlProtocolHelper
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
@@ -41,6 +39,7 @@ func (p *nativeConnection) Close() error {
 func (p *nativeConnection) start() error {
 	echoRequest := [...]byte{0xff, 0x03, 0xc0, 0x21, 0x09, 0x00, 0x00, 0x08, 0x58, 0xa5, 0xe7, 0xc2}
 	p.DestWriter.Write(echoRequest[:])
+	p.lcpHandler = controlProtocolHelper{controlProtocol: &lcpProtocol{}}
 	return nil
 }
 
