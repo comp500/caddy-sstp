@@ -21,16 +21,19 @@ type ConnectionType int
 
 // Constants for ConnectionType values
 const (
-	ConnectionTypeNative ConnectionType = iota
+	ConnectionTypeTunTap ConnectionType = iota
+	ConnectionTypeVirtualNAT
 	ConnectionTypePppd
 )
 
 func (k ConnectionType) String() string {
 	switch k {
-	case ConnectionTypeNative:
-		return "Native"
+	case ConnectionTypeTunTap:
+		return "TUN/TAP"
+	case ConnectionTypeVirtualNAT:
+		return "VirtualNAT"
 	case ConnectionTypePppd:
-		return "Pppd"
+		return "pppd"
 	default:
 		return fmt.Sprintf("Unknown(%d)", k)
 	}
@@ -47,8 +50,10 @@ func NewConnection(config Config) (*Connection, error) {
 	var conn Connection
 
 	switch config.ConnectionType {
-	case ConnectionTypeNative:
-		conn = &nativeConnection{Config: config}
+	case ConnectionTypeTunTap:
+		conn = &nativeConnection{Config: config, Vnat: false}
+	case ConnectionTypeVirtualNAT:
+		conn = &nativeConnection{Config: config, Vnat: true}
 	case ConnectionTypePppd:
 		conn = &pppdConnection{Config: config}
 	default:

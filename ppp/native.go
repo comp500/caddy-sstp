@@ -11,12 +11,11 @@ import (
 type nativeConnection struct {
 	Config
 	linkStatus     linkStatus
+	Vnat           bool
 	firstFrameSent bool
 	hasBeenClosed  bool
-	// Indicates whether Address-and-Control-Field-Compression is applied
-	acfcApplied bool
-	// Indicates whether Protocol-Field-Compression is applied
-	pfcApplied bool
+	acfcApplied    bool // Indicates whether Address-and-Control-Field-Compression is applied
+	pfcApplied     bool // Indicates whether Protocol-Field-Compression is applied
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {

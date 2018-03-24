@@ -98,7 +98,7 @@ func (s Server) handleConnection(c net.Conn) {
 		DestIP:         s.destIP,
 		SrcIP:          s.srcIP,
 		ExtraArguments: s.extraArgs,
-		ConnectionType: ppp.ConnectionTypeNative,
+		ConnectionType: ppp.ConnectionTypeTunTap,
 		DestWriter:     packetHandler{c, packChan},
 	}
 
