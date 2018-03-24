@@ -2,6 +2,7 @@ package ppp
 
 import (
 	"errors"
+	"time"
 )
 
 // Generic Control Protocol interface with helper methods for automatons
@@ -12,9 +13,12 @@ type controlProtocol interface {
 
 type controlProtocolHelper struct {
 	controlProtocol
-	state        cpState
-	restartCount int
-	failureCount int
+	state               cpState
+	configureCount      int
+	terminateCount      int
+	restartTimer        *time.Timer // TODO read from the timer
+	restartTimerExpired bool
+	failureCount        int
 }
 
 // cpState is the current status of the CP negotiation automaton
@@ -37,21 +41,24 @@ const (
 // ErrCpAutomaton is an internal error in the Control Protocol automaton
 var ErrCpAutomaton = errors.New("Invalid Control Protocol automaton state")
 
-// TODO: make this configurable
+// TODO: make these configurable
 const (
 	cpMaxTerminate = 2
 	cpMaxConfigure = 10
 	cpMaxFailure   = 5
+	cpTimerLength  = 3 * time.Second
 )
 
 // CP automaton events, see RFC1661 section 4.1
 
-func (p *controlProtocolHelper) lcpUp() error {
+func (p *controlProtocolHelper) Up() error {
 	switch p.state {
 	case cpStateInitial:
 		p.state = cpStateClosed
 	case cpStateStarting:
-		p.restartCount = cpMaxConfigure
+		p.configureCount = cpMaxConfigure
+		p.resetTimer()
+		// TODO: store corresponding request for timer?
 		err := p.sendConfigureRequest(p)
 		if err != nil {
 			return err
@@ -63,7 +70,7 @@ func (p *controlProtocolHelper) lcpUp() error {
 	return nil
 }
 
-func (p *controlProtocolHelper) lcpDown() error {
+func (p *controlProtocolHelper) Down() error {
 	switch p.state {
 	case cpStateClosed:
 		p.state = cpStateInitial
@@ -87,7 +94,7 @@ func (p *controlProtocolHelper) lcpDown() error {
 	return nil
 }
 
-func (p *controlProtocolHelper) lcpOpen() error {
+func (p *controlProtocolHelper) Open() error {
 	switch p.state {
 	case cpStateInitial:
 		// TODO: THIS-LAYER-STARTED
@@ -97,7 +104,9 @@ func (p *controlProtocolHelper) lcpOpen() error {
 	case cpStateStarting:
 		// Do nothing, 1 -> 1
 	case cpStateClosed:
-		p.restartCount = cpMaxConfigure
+		p.configureCount = cpMaxConfigure
+		p.resetTimer()
+		// TODO: store corresponding request for timer?
 		err := p.sendConfigureRequest(p)
 		if err != nil {
 			return err
@@ -123,7 +132,7 @@ func (p *controlProtocolHelper) lcpOpen() error {
 	return nil
 }
 
-func (p *controlProtocolHelper) lcpClose() error {
+func (p *controlProtocolHelper) Close() error {
 	switch p.state {
 	case cpStateInitial:
 		// Do nothing, 0 -> 0
@@ -145,7 +154,9 @@ func (p *controlProtocolHelper) lcpClose() error {
 		// - e.g. signal Down event to NCP/Auth/LQP
 		fallthrough
 	case cpStateReqSent, cpStateAckReceived, cpStateAckSent:
-		p.restartCount = cpMaxFailure
+		p.terminateCount = cpMaxTerminate
+		p.resetTimer()
+		// TODO: store corresponding request for timer?
 		err := p.sendTerminateRequest(p)
 		if err != nil {
 			return err
@@ -155,4 +166,15 @@ func (p *controlProtocolHelper) lcpClose() error {
 		return ErrCpAutomaton
 	}
 	return nil
+}
+
+func (p *controlProtocolHelper) resetTimer() {
+	if p.restartTimer != nil {
+		p.restartTimer = time.NewTimer(cpTimerLength)
+	} else {
+		if !p.restartTimer.Stop() {
+			<-p.restartTimer.C
+		}
+		p.restartTimer.Reset(cpTimerLength)
+	}
 }
