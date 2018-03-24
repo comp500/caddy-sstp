@@ -226,6 +226,35 @@ func (k controlCode) String() string {
 	}
 }
 
+// lcpOption is a LCP Configuration Option
+type lcpOption uint16
+
+// Constants for lcpOption values
+const (
+	lcpOptionMRU          lcpOption = 1 // Maximum-Recieve-Unit
+	lcpOptionAuthProtocol lcpOption = 3
+	lcpOptionMagicNumber  lcpOption = 4
+	lcpOptionPFC          lcpOption = 7 // Protocol-Field-Compression
+	lcpOptionACFC         lcpOption = 8 // Address-and-Control-Field-Compression
+)
+
+func (k lcpOption) String() string {
+	switch k {
+	case lcpOptionMRU:
+		return "Maximum-Receive-Unit"
+	case lcpOptionAuthProtocol:
+		return "Authentication-Protocol"
+	case lcpOptionMagicNumber:
+		return "Magic-Number"
+	case lcpOptionPFC:
+		return "Protocol-Field-Compression"
+	case lcpOptionACFC:
+		return "Address-and-Control-Field-Compression"
+	default:
+		return fmt.Sprintf("Unknown (%d)", k)
+	}
+}
+
 func parseLCP(data []byte, p *nativeConnection) error {
 	log.Printf("%s", controlCode(data[0]))
 	return nil
