@@ -172,9 +172,47 @@ func (p *controlProtocolHelper) resetTimer() {
 	if p.restartTimer != nil {
 		p.restartTimer = time.NewTimer(cpTimerLength)
 	} else {
-		if !p.restartTimer.Stop() {
+		if !p.restartTimerExpired && !p.restartTimer.Stop() {
 			<-p.restartTimer.C
 		}
 		p.restartTimer.Reset(cpTimerLength)
 	}
+}
+
+func (p *controlProtocolHelper) timeoutTriggered() error {
+	// TODO: which counter do we check?
+	// should we have multiple timers for configure/terminate?
+
+	if p.configureCount > 0 {
+		switch p.state {
+		case cpStateClosing, cpStateStopping:
+			p.sendTerminateRequest(p)
+		case cpStateAckReceived:
+			p.state = cpStateReqSent
+			fallthrough
+		case cpStateReqSent, cpStateAckSent:
+			p.sendConfigureRequest(p)
+		default:
+			return ErrCpAutomaton
+		}
+	} else {
+		switch p.state {
+		case cpStateClosing:
+			// TODO: THIS-LAYER-FINISHED
+			// - advance to Link Dead phase in PPP
+			p.state = cpStateClosed
+		case cpStateStopping:
+			// TODO: THIS-LAYER-FINISHED
+			// - advance to Link Dead phase in PPP
+			p.state = cpStateStopped
+		case cpStateReqSent, cpStateAckReceived, cpStateAckSent:
+			// TODO: THIS-LAYER-FINISHED
+			// - advance to Link Dead phase in PPP
+			p.state = cpStateStopped
+			// passive?
+		default:
+			return ErrCpAutomaton
+		}
+	}
+	return nil
 }

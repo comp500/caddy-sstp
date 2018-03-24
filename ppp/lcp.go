@@ -107,11 +107,11 @@ func (p *nativeConnection) parseLCP(data []byte) error {
 type lcpProtocol struct{}
 
 func (p *lcpProtocol) sendConfigureRequest(h *controlProtocolHelper) error {
-	h.restartCount--
+	h.configureCount--
 	return nil
 }
 
 func (p *lcpProtocol) sendTerminateRequest(h *controlProtocolHelper) error {
-	h.restartCount--
+	h.terminateCount--
 	return nil
 }
