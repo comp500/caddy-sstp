@@ -10,13 +10,15 @@ import (
 // This file manages pppd connections for the native (pure Go) connection type.
 type nativeConnection struct {
 	Config
-	linkStatus     linkStatus
-	Vnat           bool
-	firstFrameSent bool
-	hasBeenClosed  bool
-	acfcApplied    bool // Indicates whether Address-and-Control-Field-Compression is applied
-	pfcApplied     bool // Indicates whether Protocol-Field-Compression is applied
-	lcpState       lcpState
+	linkStatus      linkStatus
+	Vnat            bool
+	firstFrameSent  bool
+	hasBeenClosed   bool
+	acfcApplied     bool // Indicates whether Address-and-Control-Field-Compression is applied
+	pfcApplied      bool // Indicates whether Protocol-Field-Compression is applied
+	lcpState        lcpState
+	lcpRestartCount int
+	lcpFailureCount int
 }
 
 func (p *nativeConnection) Write(data []byte) (int, error) {
