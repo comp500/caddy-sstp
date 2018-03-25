@@ -518,3 +518,72 @@ func (p *controlProtocolHelper) receiveConfigureNak() error {
 	}
 	return nil
 }
+
+func (p *controlProtocolHelper) receiveTerminateRequest() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped, cpStateClosing, cpStateStopping, cpStateReqSent:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateAckReceived, cpStateAckSent:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.zrc()
+		if err != nil {
+			return err
+		}
+		err = p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateStopping
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveTerminateAck() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped:
+		// Do nothing
+	case cpStateClosing:
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateClosed
+	case cpStateStopping:
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateStopped
+	case cpStateReqSent, cpStateAckSent:
+		// Do nothing
+	case cpStateAckReceived:
+		p.state = cpStateReqSent
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
