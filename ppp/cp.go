@@ -8,7 +8,10 @@ import (
 // Generic Control Protocol interface with helper methods for automatons
 type controlProtocol interface {
 	sendConfigureRequest(*controlProtocolHelper) error
+	sendConfigureAck(*controlProtocolHelper) error
+	sendConfigureNak(*controlProtocolHelper) error
 	sendTerminateRequest(*controlProtocolHelper) error
+	sendTerminateAck(*controlProtocolHelper) error
 }
 
 type controlProtocolHelper struct {
@@ -279,6 +282,239 @@ func (p *controlProtocolHelper) timeoutTriggered() error {
 		default:
 			return ErrCpAutomaton
 		}
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveGoodConfigureRequest() error {
+	switch p.state {
+	case cpStateClosed:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateStopped:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureAck(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateAckSent
+	case cpStateClosing, cpStateStopping:
+		// Do nothing
+	case cpStateReqSent:
+		err := p.sendConfigureAck(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateAckSent
+	case cpStateAckReceived:
+		err := p.sendConfigureAck(p)
+		if err != nil {
+			return err
+		}
+		err = p.tlu()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateOpened
+	case cpStateAckSent:
+		err := p.sendConfigureAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureAck(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateAckSent
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveBadConfigureRequest() error {
+	switch p.state {
+	case cpStateClosed:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateStopped:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureNak(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+	case cpStateClosing, cpStateStopping:
+		// Do nothing
+	case cpStateReqSent:
+		err := p.sendConfigureNak(p)
+		if err != nil {
+			return err
+		}
+	case cpStateAckReceived:
+		err := p.sendConfigureNak(p)
+		if err != nil {
+			return err
+		}
+	case cpStateAckSent:
+		err := p.sendConfigureNak(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureNak(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveConfigureAck() error {
+	switch p.state {
+	case cpStateClosed:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateStopped:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateClosing, cpStateStopping:
+		// Do nothing
+	case cpStateReqSent:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateAckReceived
+	case cpStateAckReceived:
+		err := p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+		// crossed?
+	case cpStateAckSent:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		err = p.tlu()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateOpened
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+		// crossed?
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveConfigureNak() error {
+	switch p.state {
+	case cpStateClosed:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateStopped:
+		err := p.sendTerminateAck(p)
+		if err != nil {
+			return err
+		}
+	case cpStateClosing, cpStateStopping:
+		// Do nothing
+	case cpStateReqSent:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+	case cpStateAckReceived:
+		err := p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+		// crossed?
+	case cpStateAckSent:
+		err := p.irc(false)
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.sendConfigureRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateReqSent
+		// crossed?
+	default:
+		return ErrCpAutomaton
 	}
 	return nil
 }
