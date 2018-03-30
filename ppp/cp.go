@@ -12,6 +12,8 @@ type controlProtocol interface {
 	sendConfigureNak(*controlProtocolHelper) error
 	sendTerminateRequest(*controlProtocolHelper) error
 	sendTerminateAck(*controlProtocolHelper) error
+	sendCodeReject(*controlProtocolHelper) error
+	sendEchoReply(*controlProtocolHelper) error
 }
 
 type controlProtocolHelper struct {
@@ -582,6 +584,86 @@ func (p *controlProtocolHelper) receiveTerminateAck() error {
 			return err
 		}
 		p.state = cpStateReqSent
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+func (p *controlProtocolHelper) receiveUnknownCode() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped, cpStateClosing, cpStateStopping, cpStateReqSent, cpStateAckReceived, cpStateAckSent, cpStateOpened:
+		err := p.sendCodeReject(p)
+		if err != nil {
+			return err
+		}
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+// or Receive-Protocol-Reject
+func (p *controlProtocolHelper) receiveCodeRejectPermitted() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped, cpStateClosing, cpStateStopping, cpStateReqSent, cpStateAckSent, cpStateOpened:
+		// Do nothing
+	case cpStateAckReceived:
+		p.state = cpStateReqSent
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+// or Receive-Protocol-Reject
+func (p *controlProtocolHelper) receiveCodeRejectCatastrophic() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped:
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
+	case cpStateClosing:
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateClosed
+	case cpStateStopping, cpStateReqSent, cpStateAckReceived, cpStateAckSent:
+		err := p.tlf()
+		if err != nil {
+			return err
+		}
+		p.state = cpStateStopped
+	case cpStateOpened:
+		err := p.tld()
+		if err != nil {
+			return err
+		}
+		err = p.irc(true)
+		if err != nil {
+			return err
+		}
+		err = p.sendTerminateRequest(p)
+		if err != nil {
+			return err
+		}
+		p.state = cpStateStopping
+	default:
+		return ErrCpAutomaton
+	}
+	return nil
+}
+
+// or Receive-Echo-Reply
+// or Receive-Discard-Request
+func (p *controlProtocolHelper) receiveEchoRequest() error {
+	switch p.state {
+	case cpStateClosed, cpStateStopped, cpStateClosing, cpStateStopping, cpStateReqSent, cpStateAckReceived, cpStateAckSent:
+		// Do nothing
+	case cpStateOpened:
+		p.sendEchoReply(p)
 	default:
 		return ErrCpAutomaton
 	}

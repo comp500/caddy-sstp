@@ -111,7 +111,27 @@ func (p *lcpProtocol) sendConfigureRequest(h *controlProtocolHelper) error {
 	return nil
 }
 
+func (p *lcpProtocol) sendConfigureAck(h *controlProtocolHelper) error {
+	return nil
+}
+
+func (p *lcpProtocol) sendConfigureNak(h *controlProtocolHelper) error {
+	return nil
+}
+
 func (p *lcpProtocol) sendTerminateRequest(h *controlProtocolHelper) error {
 	h.terminateCount--
+	return nil
+}
+
+func (p *lcpProtocol) sendTerminateAck(h *controlProtocolHelper) error {
+	return nil
+}
+
+func (p *lcpProtocol) sendCodeReject(h *controlProtocolHelper) error {
+	return nil
+}
+
+func (p *lcpProtocol) sendEchoReply(h *controlProtocolHelper) error {
 	return nil
 }
