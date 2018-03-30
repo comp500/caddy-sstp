@@ -23,11 +23,7 @@ func (p *nativeConnection) Write(data []byte) (int, error) {
 	if p.hasBeenClosed {
 		return 0, errors.New("ppp write after close")
 	}
-	err := p.parsePPP(data)
-	if err != nil {
-		return 0, err
-	}
-	return len(data), nil
+	return p.parsePPP(data)
 }
 
 func (p *nativeConnection) Close() error {
@@ -93,7 +89,7 @@ func (k protocolType) String() string {
 	}
 }
 
-func (p *nativeConnection) parsePPP(data []byte) error {
+func (p *nativeConnection) parsePPP(data []byte) (int, error) {
 	// TODO: parse packets for *every* protocol
 	if !p.acfcApplied {
 		// If address and control field is not compressed, remove it
@@ -122,7 +118,7 @@ func (p *nativeConnection) parsePPP(data []byte) error {
 	if p.linkStatus == linkStatusEstablish {
 		if protocolNumber == protocolTypeLCP {
 			log.Print("LCP")
-			return p.parseLCP(data)
+			return p.lcpHandler.Write(data)
 		}
 		log.Print("Discarding packet")
 		// silently discard, only allow LCP
@@ -132,7 +128,7 @@ func (p *nativeConnection) parsePPP(data []byte) error {
 		switch protocolNumber {
 		case protocolTypeLCP:
 			log.Print("LCP")
-			return p.parseLCP(data)
+			return p.lcpHandler.Write(data)
 		case protocolTypePAP:
 			log.Print("PAP")
 		case protocolTypeCHAP:
@@ -153,7 +149,7 @@ func (p *nativeConnection) parsePPP(data []byte) error {
 			// silently discard
 		case protocolTypeLCP:
 			log.Print("LCP")
-			return p.parseLCP(data)
+			return p.lcpHandler.Write(data)
 		case protocolTypeIPCP:
 			log.Print("IPCP")
 		case protocolTypeCCP:
@@ -167,11 +163,11 @@ func (p *nativeConnection) parsePPP(data []byte) error {
 	if p.linkStatus == linkStatusTerminate {
 		if protocolNumber == protocolTypeLCP {
 			log.Print("LCP")
-			return p.parseLCP(data)
+			return p.lcpHandler.Write(data)
 		}
 		log.Print("Discarding packet")
 		// silently discard, only allow LCP
 	}
 
-	return nil
+	return 0, nil
 }

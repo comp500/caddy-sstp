@@ -7,6 +7,7 @@ import (
 
 // Generic Control Protocol interface with helper methods for automatons
 type controlProtocol interface {
+	writeData([]byte, *controlProtocolHelper) (int, error)
 	sendConfigureRequest(*controlProtocolHelper) error
 	sendConfigureAck(*controlProtocolHelper) error
 	sendConfigureNak(*controlProtocolHelper) error
@@ -24,6 +25,11 @@ type controlProtocolHelper struct {
 	restartTimer        *time.Timer // TODO read from the timer
 	restartTimerExpired bool
 	failureCount        int
+}
+
+// Implement io.Writer
+func (p *controlProtocolHelper) Write(data []byte) (int, error) {
+	return p.writeData(data, p)
 }
 
 // cpState is the current status of the CP negotiation automaton

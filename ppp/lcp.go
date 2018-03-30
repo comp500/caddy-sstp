@@ -86,7 +86,10 @@ func (k lcpOption) String() string {
 	}
 }
 
-func (p *nativeConnection) parseLCP(data []byte) error {
+type lcpProtocol struct{}
+type lcpPacket struct{}
+
+func (p *lcpProtocol) writeData(data []byte, h *controlProtocolHelper) (int, error) {
 	controlCode := controlCode(data[0])
 	// TODO implement identifier?
 	packetLength := binary.BigEndian.Uint16(data[2:4])
@@ -101,10 +104,12 @@ func (p *nativeConnection) parseLCP(data []byte) error {
 		log.Printf("%s not implemented", controlCode)
 	}
 
-	return nil
+	return len(data), nil
 }
 
-type lcpProtocol struct{}
+func (p *lcpProtocol) writePacket(packet lcpPacket) error {
+	return nil
+}
 
 func (p *lcpProtocol) sendConfigureRequest(h *controlProtocolHelper) error {
 	h.configureCount--
