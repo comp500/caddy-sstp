@@ -6,6 +6,9 @@ import (
 	"log"
 )
 
+type lcpProtocol struct{}
+
+// TODO: move to cp.go?
 // controlCode is the LCP/IPCP/CCP control protocol message code of this packet
 type controlCode uint16
 
@@ -62,11 +65,12 @@ type lcpOption uint16
 
 // Constants for lcpOption values
 const (
-	lcpOptionMRU          lcpOption = 1 // Maximum-Recieve-Unit
-	lcpOptionAuthProtocol lcpOption = 3
-	lcpOptionMagicNumber  lcpOption = 4
-	lcpOptionPFC          lcpOption = 7 // Protocol-Field-Compression
-	lcpOptionACFC         lcpOption = 8 // Address-and-Control-Field-Compression
+	lcpOptionMRU             lcpOption = 1 // Maximum-Recieve-Unit
+	lcpOptionAuthProtocol    lcpOption = 3
+	lcpOptionQualityProtocol lcpOption = 4
+	lcpOptionMagicNumber     lcpOption = 5
+	lcpOptionPFC             lcpOption = 7 // Protocol-Field-Compression
+	lcpOptionACFC            lcpOption = 8 // Address-and-Control-Field-Compression
 )
 
 func (k lcpOption) String() string {
@@ -75,6 +79,8 @@ func (k lcpOption) String() string {
 		return "Maximum-Receive-Unit"
 	case lcpOptionAuthProtocol:
 		return "Authentication-Protocol"
+	case lcpOptionQualityProtocol:
+		return "Quality-Protocol"
 	case lcpOptionMagicNumber:
 		return "Magic-Number"
 	case lcpOptionPFC:
@@ -86,9 +92,50 @@ func (k lcpOption) String() string {
 	}
 }
 
-type lcpProtocol struct{}
-type lcpPacket struct{}
+type lcpOptionData struct {
+	option lcpOption
+	data   []byte
+}
 
+type lcpPacket struct {
+	code       controlCode
+	identifier int
+}
+
+type lcpConfigurePacket struct {
+	lcpPacket
+	options []lcpOptionData
+}
+
+type lcpTerminatePacket struct {
+	lcpPacket
+	data []byte
+}
+
+type lcpCodeRejectPacket struct {
+	lcpPacket
+	rejectedData []byte
+}
+
+type lcpProtocolRejectPacket struct {
+	lcpPacket
+	rejectedProtocol protocolType
+	rejectedData     []byte
+}
+
+type lcpEchoPacket struct {
+	lcpPacket
+	magicNumber int32
+	data        []byte
+}
+
+type lcpDiscardPacket struct {
+	lcpPacket
+	magicNumber int32
+	data        []byte
+}
+
+// Write data from higher layers into LCP
 func (p *lcpProtocol) writeData(data []byte, h *controlProtocolHelper) (int, error) {
 	controlCode := controlCode(data[0])
 	// TODO implement identifier?
@@ -103,11 +150,32 @@ func (p *lcpProtocol) writeData(data []byte, h *controlProtocolHelper) (int, err
 	default:
 		log.Printf("%s not implemented", controlCode)
 	}
+	// Must silently discard any Discard-Request packets
 
 	return len(data), nil
 }
 
-func (p *lcpProtocol) writePacket(packet lcpPacket) error {
+func (p *lcpProtocol) writePacket(packet lcpPacket, data []byte) error {
+	return nil
+}
+
+func (p *lcpProtocol) writeConfigurePacket(packet lcpConfigurePacket, data []byte) error {
+	return nil
+}
+
+func (p *lcpProtocol) writeTerminatePacket(packet lcpTerminatePacket, data []byte) error {
+	return nil
+}
+
+func (p *lcpProtocol) writeCodeRejectPacket(packet lcpCodeRejectPacket, data []byte) error {
+	return nil
+}
+
+func (p *lcpProtocol) writeProtocolRejectPacket(packet lcpProtocolRejectPacket, data []byte) error {
+	return nil
+}
+
+func (p *lcpProtocol) writeEchoPacket(packet lcpEchoPacket, data []byte) error {
 	return nil
 }
 
