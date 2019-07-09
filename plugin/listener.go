@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/mholt/caddy"
+	"github.com/caddyserver/caddy"
 )
 
 // Listener is a wrapper around a caddy.Listener that modifies SSTP requests.
