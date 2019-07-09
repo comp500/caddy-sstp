@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/comp500/caddy-sstp/ppp"
-	"github.com/mholt/caddy/caddyhttp/httpserver"
+	"github.com/caddyserver/caddy/caddyhttp/httpserver"
 )
 
 // Server is a httpserver.Handler that handles SSTP requests.
